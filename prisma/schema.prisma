@@ -1,0 +1,165 @@
+// Prisma schema for the book-reading platform.
+// Provider is set to postgresql for production. For quick local testing without
+// a Postgres server, you can switch provider to "sqlite" and set
+// DATABASE_URL="file:./dev.db" in .env — the schema is compatible with both.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum BookAccessType {
+  FREE
+  PAID
+  MEMBERSHIP
+}
+
+enum BookStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PurchaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum MembershipStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Auth / security
+  refreshTokens     RefreshToken[]
+  passwordResetToken   String?
+  passwordResetExpires DateTime?
+  isActive          Boolean  @default(true)
+
+  // Relations
+  purchases         Purchase[]
+  memberships       Membership[]
+  readingProgress   ReadingProgress[]
+
+  @@index([email])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revoked   Boolean  @default(false)
+
+  @@index([userId])
+}
+
+model Book {
+  id              String         @id @default(uuid())
+  slug            String?        @unique // matches the frontend's URL slug, e.g. "the-quiet-advantage"
+  title           String
+  author          String
+  description     String?
+  coverImageUrl   String?
+  fileUrl         String?        // location of the actual book content/file
+  category        String?
+  price           Decimal        @default(0) @db.Decimal(10, 2)
+  accessType      BookAccessType @default(FREE)
+  status          BookStatus     @default(PUBLISHED)
+  publicationDate DateTime?
+  pageCount       Int?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  purchases       Purchase[]
+  readingProgress ReadingProgress[]
+
+  @@index([accessType])
+  @@index([category])
+  @@index([status])
+}
+
+model MembershipPlan {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  price        Decimal  @db.Decimal(10, 2)
+  durationDays Int      // e.g. 30, 365
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  memberships  Membership[]
+}
+
+model Membership {
+  id               String           @id @default(uuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId           String
+  plan             MembershipPlan   @relation(fields: [planId], references: [id])
+  status           MembershipStatus @default(ACTIVE)
+  startDate        DateTime         @default(now())
+  expiryDate       DateTime
+  createdAt        DateTime         @default(now())
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Purchase {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId        String
+  book          Book           @relation(fields: [bookId], references: [id])
+  amount        Decimal        @db.Decimal(10, 2)
+  status        PurchaseStatus @default(PENDING)
+  paymentRef    String?        // external payment gateway transaction id
+  purchasedAt   DateTime       @default(now())
+
+  @@unique([userId, bookId]) // prevents duplicate purchases of the same book
+  @@index([userId])
+  @@index([bookId])
+}
+
+model ReadingProgress {
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId           String
+  book             Book      @relation(fields: [bookId], references: [id])
+  currentPage      Int       @default(0)
+  percentComplete  Float     @default(0) // 0-100
+  lastPosition     String?   // e.g. CFI/anchor/offset string from the reader frontend
+  startedAt        DateTime  @default(now())
+  lastOpenedAt     DateTime  @default(now())
+  completedAt      DateTime?
+  isCompleted      Boolean   @default(false)
+
+  @@unique([userId, bookId])
+  @@index([userId])
+  @@index([bookId])
+}
