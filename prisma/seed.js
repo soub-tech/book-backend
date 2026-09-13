@@ -59,10 +59,36 @@ async function main() {
     });
   }
 
+  // Real catalogue, matching the frontend's src/data/catalog.ts exactly by
+  // slug so purchases, progress, and access checks all resolve correctly.
+  // access mapping: free -> FREE, paid -> PAID, plus/premium -> MEMBERSHIP
+  // (the backend has one membership tier; Plus vs Premium is a frontend-only
+  // display distinction for now).
   const books = [
-    { slug: 'the-open-road', title: 'The Open Road', author: 'J. Marlowe', accessType: 'FREE', price: 0, category: 'Fiction' },
-    { slug: 'deep-work-principles', title: 'Deep Work Principles', author: 'A. Newport-Fan', accessType: 'PAID', price: 12.99, category: 'Productivity' },
-    { slug: 'mystery-of-the-vault', title: 'Mystery of the Vault', author: 'C. Hale', accessType: 'MEMBERSHIP', price: 0, category: 'Mystery' },
+    { slug: 'the-quiet-advantage', title: 'The Quiet Advantage', author: 'Meera Raghavan', accessType: 'MEMBERSHIP', price: 349, category: 'Habits', pageCount: 264 },
+    { slug: 'deep-attention', title: 'Deep Attention', author: 'Tomás Reyes', accessType: 'PAID', price: 399, category: 'Productivity', pageCount: 288 },
+    { slug: 'money-with-intention', title: 'Money with Intention', author: 'Arjun Mehta', accessType: 'PAID', price: 449, category: 'Finance', pageCount: 312 },
+    { slug: 'the-examined-morning', title: 'The Examined Morning', author: 'Elena Varga', accessType: 'FREE', price: 0, category: 'Philosophy', pageCount: 168 },
+    { slug: 'leading-without-noise', title: 'Leading Without Noise', author: 'Daniel Okafor', accessType: 'MEMBERSHIP', price: 499, category: 'Business', pageCount: 296 },
+    { slug: 'the-inner-voice', title: 'The Inner Voice', author: 'Sophie Lindqvist', accessType: 'MEMBERSHIP', price: 379, category: 'Psychology', pageCount: 240 },
+    { slug: 'the-honest-conversation', title: 'The Honest Conversation', author: 'Sophie Lindqvist', accessType: 'MEMBERSHIP', price: 329, category: 'Relationships', pageCount: 208 },
+    { slug: 'your-next-chapter', title: 'Your Next Chapter', author: 'Priya Nair', accessType: 'PAID', price: 399, category: 'Career Growth', pageCount: 256 },
+    { slug: 'the-patient-builder', title: 'The Patient Builder', author: 'James Whitfield', accessType: 'MEMBERSHIP', price: 429, category: 'Biography', pageCount: 344 },
+    { slug: 'small-systems', title: 'Small Systems', author: 'Tomás Reyes', accessType: 'FREE', price: 0, category: 'Productivity', pageCount: 142 },
+    { slug: 'worth-more', title: 'Worth More', author: 'Meera Raghavan', accessType: 'MEMBERSHIP', price: 349, category: 'Self-Improvement', pageCount: 224 },
+    { slug: 'the-long-game-of-wealth', title: 'The Long Game of Wealth', author: 'Arjun Mehta', accessType: 'MEMBERSHIP', price: 499, category: 'Finance', pageCount: 328 },
+    { slug: 'attention-and-meaning', title: 'Attention and Meaning', author: 'Elena Varga', accessType: 'MEMBERSHIP', price: 379, category: 'Philosophy', pageCount: 236 },
+    { slug: 'first-ninety-days-of-management', title: 'The First Ninety Days of Management', author: 'Daniel Okafor', accessType: 'PAID', price: 349, category: 'Career Growth', pageCount: 212 },
+    { slug: 'the-generous-relationship', title: 'The Generous Relationship', author: 'Sophie Lindqvist', accessType: 'FREE', price: 0, category: 'Relationships', pageCount: 156 },
+    { slug: 'the-disciplined-mind', title: 'The Disciplined Mind', author: 'Meera Raghavan', accessType: 'PAID', price: 399, category: 'Psychology', pageCount: 272 },
+    { slug: 'a-life-in-letters', title: 'A Life in Letters', author: 'James Whitfield', accessType: 'FREE', price: 0, category: 'Biography', pageCount: 198 },
+    { slug: 'the-clear-desk', title: 'The Clear Desk', author: 'Tomás Reyes', accessType: 'MEMBERSHIP', price: 329, category: 'Productivity', pageCount: 196 },
+    { slug: 'negotiate-like-you-belong', title: 'Negotiate Like You Belong', author: 'Priya Nair', accessType: 'PAID', price: 299, category: 'Career Growth', pageCount: 184 },
+    { slug: 'the-founders-notebook', title: "The Founder's Notebook", author: 'Daniel Okafor', accessType: 'PAID', price: 449, category: 'Business', pageCount: 260 },
+    { slug: 'on-friendship', title: 'On Friendship', author: 'Elena Varga', accessType: 'MEMBERSHIP', price: 249, category: 'Philosophy', pageCount: 132 },
+    { slug: 'unhurried', title: 'Unhurried', author: 'Tomás Reyes', accessType: 'MEMBERSHIP', price: 379, category: 'Self-Improvement', pageCount: 228 },
+    { slug: 'the-first-salary', title: 'The First Salary', author: 'Arjun Mehta', accessType: 'FREE', price: 0, category: 'Finance', pageCount: 120 },
+    { slug: 'the-teachers-teacher', title: "The Teacher's Teacher", author: 'James Whitfield', accessType: 'MEMBERSHIP', price: 379, category: 'Biography', pageCount: 302 },
   ];
 
   for (const b of books) {
