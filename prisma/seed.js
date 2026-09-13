@@ -28,29 +28,36 @@ async function main() {
     },
   });
 
-  await prisma.membershipPlan.upsert({
-    where: { id: 'seed-monthly-plan' },
-    update: {},
-    create: {
-      id: 'seed-monthly-plan',
-      name: 'Monthly Membership',
-      description: 'Unlimited access to all membership books',
-      price: 9.99,
-      durationDays: 30,
-    },
+  // One-time cleanup: earlier seed runs created plans with hardcoded,
+  // non-UUID ids ("seed-monthly-plan"/"seed-annual-plan"), which the API
+  // rejects as invalid. Remove those so they get recreated correctly below.
+  await prisma.membershipPlan.deleteMany({
+    where: { id: { in: ['seed-monthly-plan', 'seed-annual-plan'] } },
   });
 
-  await prisma.membershipPlan.upsert({
-    where: { id: 'seed-annual-plan' },
-    update: {},
-    create: {
-      id: 'seed-annual-plan',
-      name: 'Annual Membership',
-      description: 'Unlimited access to all membership books, billed yearly',
-      price: 89.99,
-      durationDays: 365,
-    },
-  });
+  const existingMonthly = await prisma.membershipPlan.findFirst({ where: { name: 'Monthly Membership' } });
+  if (!existingMonthly) {
+    await prisma.membershipPlan.create({
+      data: {
+        name: 'Monthly Membership',
+        description: 'Unlimited access to all membership books',
+        price: 9.99,
+        durationDays: 30,
+      },
+    });
+  }
+
+  const existingAnnual = await prisma.membershipPlan.findFirst({ where: { name: 'Annual Membership' } });
+  if (!existingAnnual) {
+    await prisma.membershipPlan.create({
+      data: {
+        name: 'Annual Membership',
+        description: 'Unlimited access to all membership books, billed yearly',
+        price: 89.99,
+        durationDays: 365,
+      },
+    });
+  }
 
   const books = [
     { slug: 'the-open-road', title: 'The Open Road', author: 'J. Marlowe', accessType: 'FREE', price: 0, category: 'Fiction' },
