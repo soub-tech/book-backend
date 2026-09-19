@@ -1,5 +1,6 @@
 const prisma = require('../config/db');
 const ApiError = require('../utils/ApiError');
+const paymentService = require('./paymentService');
 
 // Central source of truth for "is this user's membership active right now".
 // Never trust a stored ACTIVE status alone — always check the expiry date,
@@ -18,9 +19,18 @@ async function isMembershipActive(userId) {
   return Boolean(membership);
 }
 
-async function subscribe(userId, { planId, paymentRef }) {
+async function subscribe(userId, { planId, paymentRef: clientPaymentRef }) {
   const plan = await prisma.membershipPlan.findUnique({ where: { id: planId } });
   if (!plan || !plan.isActive) throw ApiError.notFound('Membership plan not found');
+
+  const payment = await paymentService.processPayment({
+    amountRupees: Number(plan.price),
+    description: `Membership: ${plan.name}`,
+    metadata: { userId, planId },
+  });
+  if (!payment.success) {
+    throw ApiError.badRequest('Payment could not be completed');
+  }
 
   const existing = await getActiveMembership(userId);
   const startDate = existing ? existing.expiryDate : new Date();

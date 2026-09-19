@@ -1,15 +1,13 @@
 const prisma = require('../config/db');
 const ApiError = require('../utils/ApiError');
 const bookService = require('./bookService');
+const paymentService = require('./paymentService');
 
-async function purchaseBook(userId, { bookId, paymentRef }) {
+async function purchaseBook(userId, { bookId, paymentRef: clientPaymentRef }) {
   const book = await bookService.getBookById(bookId);
 
   if (book.accessType === 'FREE') {
     throw ApiError.badRequest('This book is free and does not require purchase');
-  }
-  if (book.accessType === 'MEMBERSHIP') {
-    throw ApiError.badRequest('This book is available through membership, not individual purchase');
   }
 
   const existing = await prisma.purchase.findUnique({
@@ -19,13 +17,23 @@ async function purchaseBook(userId, { bookId, paymentRef }) {
     throw ApiError.conflict('You already own this book');
   }
 
-  // In production this is where a payment gateway (Stripe, etc.) would be
-  // charged first; the purchase record is written as COMPLETED only after
-  // the charge succeeds. paymentRef stores the gateway's transaction id.
+  // Runs the actual charge (or, currently, the simulated stand-in — see
+  // paymentService.js). The purchase is only marked COMPLETED if this
+  // succeeds, so nothing downstream needs to know whether a real gateway or
+  // the simulation produced the result.
+  const payment = await paymentService.processPayment({
+    amountRupees: Number(book.price),
+    description: `Purchase: ${book.title}`,
+    metadata: { userId, bookId },
+  });
+  if (!payment.success) {
+    throw ApiError.badRequest('Payment could not be completed');
+  }
+
   const purchase = await prisma.purchase.upsert({
     where: { userId_bookId: { userId, bookId } },
-    update: { status: 'COMPLETED', amount: book.price, paymentRef, purchasedAt: new Date() },
-    create: { userId, bookId, amount: book.price, status: 'COMPLETED', paymentRef },
+    update: { status: 'COMPLETED', amount: book.price, paymentRef: clientPaymentRef || payment.paymentRef, purchasedAt: new Date() },
+    create: { userId, bookId, amount: book.price, status: 'COMPLETED', paymentRef: clientPaymentRef || payment.paymentRef },
   });
 
   return purchase;
