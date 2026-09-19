@@ -7,6 +7,7 @@ const { purchase: schemas } = require('../utils/validators');
 router.use(authenticate);
 
 router.post('/', validate({ body: schemas.create }), purchaseController.purchaseBook);
+router.post('/checkout', validate({ body: schemas.checkout }), purchaseController.checkoutCart);
 router.get('/me', purchaseController.getMyPurchases);
 router.get('/', authorize('ADMIN'), purchaseController.getAllPurchases);
 

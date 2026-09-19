@@ -58,7 +58,11 @@ const book = {
 const purchase = {
   create: z.object({
     bookId: z.string().uuid(),
-    paymentRef: z.string().max(200).optional(),
+    paymentIntentId: z.string().min(1),
+  }),
+  checkout: z.object({
+    paymentIntentId: z.string().min(1),
+    bookIds: z.array(z.string().uuid()).min(1),
   }),
 };
 
@@ -81,7 +85,7 @@ const membershipPlan = {
 const membership = {
   subscribe: z.object({
     planId: z.string().uuid(),
-    paymentRef: z.string().max(200).optional(),
+    paymentIntentId: z.string().min(1),
   }),
 };
 

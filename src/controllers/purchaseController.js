@@ -6,6 +6,12 @@ const purchaseBook = catchAsync(async (req, res) => {
   res.status(201).json({ success: true, data: purchase });
 });
 
+const checkoutCart = catchAsync(async (req, res) => {
+  const { paymentIntentId, bookIds } = req.body;
+  const purchases = await purchaseService.checkoutCart(req.user.id, { paymentIntentId, bookIds });
+  res.status(201).json({ success: true, data: purchases });
+});
+
 const getMyPurchases = catchAsync(async (req, res) => {
   const purchases = await purchaseService.getUserPurchases(req.user.id);
   res.json({ success: true, data: purchases });
@@ -19,4 +25,4 @@ const getAllPurchases = catchAsync(async (req, res) => {
   res.json({ success: true, data: result });
 });
 
-module.exports = { purchaseBook, getMyPurchases, getAllPurchases };
+module.exports = { purchaseBook, checkoutCart, getMyPurchases, getAllPurchases };

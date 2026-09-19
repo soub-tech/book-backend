@@ -19,17 +19,13 @@ async function isMembershipActive(userId) {
   return Boolean(membership);
 }
 
-async function subscribe(userId, { planId, paymentRef: clientPaymentRef }) {
+async function subscribe(userId, { planId, paymentIntentId }) {
   const plan = await prisma.membershipPlan.findUnique({ where: { id: planId } });
   if (!plan || !plan.isActive) throw ApiError.notFound('Membership plan not found');
 
-  const payment = await paymentService.processPayment({
-    amountRupees: Number(plan.price),
-    description: `Membership: ${plan.name}`,
-    metadata: { userId, planId },
-  });
-  if (!payment.success) {
-    throw ApiError.badRequest('Payment could not be completed');
+  const verification = await paymentService.verifyPayment(paymentIntentId);
+  if (!verification.success) {
+    throw ApiError.badRequest('Payment could not be verified');
   }
 
   const existing = await getActiveMembership(userId);

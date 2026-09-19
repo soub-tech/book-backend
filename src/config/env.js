@@ -43,4 +43,8 @@ module.exports = {
     windowMin: Number(process.env.RATE_LIMIT_WINDOW_MIN || 15),
     max: Number(process.env.RATE_LIMIT_MAX || 100),
   },
+
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY || null,
+  },
 };

@@ -1,58 +1,57 @@
 // Centralized payment processing. Every purchase and membership subscription
-// goes through processPayment() rather than being marked COMPLETED directly —
-// this is the ONE place a real gateway (Razorpay, PayPal, etc.) gets wired in
-// later. Nothing in purchaseService or membershipService needs to change when
-// that happens; only this file does.
-//
-// Currently in SIMULATION MODE: no real gateway is connected yet (blocked on
-// KYC/phone verification requirements as of this writing). Every payment
-// "succeeds" immediately with a generated reference. This is intentional and
-// safe for testing — no real money moves, and purchase/membership records are
-// still created correctly in the database, so the rest of the app functions
-// exactly as it will once a real gateway is connected.
-//
-// TO CONNECT A REAL GATEWAY LATER:
-// Replace the body of processPayment() with an actual call to the gateway's
-// API (e.g. razorpay.orders.create(), or verifying a client-side payment
-// confirmation). Keep the same input/output shape so nothing else needs to
-// change: input { amountRupees, description, metadata }, output
-// { success, paymentRef, raw }.
+// goes through this file — the one place a real gateway integration lives.
+// createPaymentIntent() starts a charge (frontend collects card details via
+// Stripe Elements and confirms it); verifyPayment() checks server-side that
+// it actually succeeded before anything is marked COMPLETED in the database.
+// This two-step flow is required by Stripe (and effectively every card
+// gateway) so raw card numbers never pass through your own backend.
 
-const crypto = require('crypto');
+const env = require('../config/env');
 
-const SIMULATION_MODE = true; // flip to false once a real gateway is wired in below
+const SIMULATION_MODE = !env.stripe.secretKey; // auto-falls back if no key is configured
 
-async function processPayment({ amountRupees, description, metadata = {} }) {
+let stripeClient = null;
+function getStripe() {
+  if (!stripeClient) {
+    const Stripe = require('stripe');
+    stripeClient = new Stripe(env.stripe.secretKey);
+  }
+  return stripeClient;
+}
+
+// Starts a charge. Returns a clientSecret the frontend uses with Stripe.js to
+// securely collect card details and confirm the payment in the browser.
+async function createPaymentIntent({ amountRupees, description, metadata = {} }) {
   if (SIMULATION_MODE) {
-    // Simulated instant success. paymentRef is clearly marked as fake so it's
-    // never mistaken for a real gateway transaction ID in logs or reports.
-    const paymentRef = `SIMULATED-${crypto.randomBytes(8).toString('hex')}`;
     return {
-      success: true,
-      paymentRef,
-      raw: { simulated: true, amountRupees, description, metadata },
+      clientSecret: null,
+      paymentIntentId: `SIMULATED-${Date.now()}`,
+      simulated: true,
     };
   }
 
-  // --- Real gateway integration goes here ---
-  // Example shape for Razorpay (once KYC/PAN is available):
-  //
-  // const Razorpay = require('razorpay');
-  // const instance = new Razorpay({
-  //   key_id: process.env.RAZORPAY_KEY_ID,
-  //   key_secret: process.env.RAZORPAY_KEY_SECRET,
-  // });
-  // const order = await instance.orders.create({
-  //   amount: amountRupees * 100, // Razorpay uses paise
-  //   currency: 'INR',
-  //   notes: metadata,
-  // });
-  // Actual payment capture then happens client-side (Razorpay Checkout popup)
-  // and is verified server-side via a signature check before calling this
-  // function again to mark it complete — see Razorpay's docs for the two-step
-  // order-then-verify flow.
+  const stripe = getStripe();
+  const intent = await stripe.paymentIntents.create({
+    amount: Math.round(amountRupees * 100), // Stripe uses the smallest currency unit (paise for INR)
+    currency: 'inr',
+    description,
+    metadata: Object.fromEntries(Object.entries(metadata).map(([k, v]) => [k, String(v)])),
+  });
 
-  throw new Error('No real payment gateway is configured yet.');
+  return { clientSecret: intent.client_secret, paymentIntentId: intent.id, simulated: false };
 }
 
-module.exports = { processPayment, SIMULATION_MODE };
+// Confirms server-side (never trust the frontend's word alone) that a
+// payment actually succeeded before granting access to anything.
+async function verifyPayment(paymentIntentId) {
+  if (SIMULATION_MODE || String(paymentIntentId).startsWith('SIMULATED-')) {
+    return { success: true, paymentRef: paymentIntentId };
+  }
+
+  const stripe = getStripe();
+  const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  return { success: intent.status === 'succeeded', paymentRef: paymentIntentId };
+}
+
+module.exports = { createPaymentIntent, verifyPayment, SIMULATION_MODE };
+
