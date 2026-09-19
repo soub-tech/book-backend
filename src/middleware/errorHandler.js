@@ -28,7 +28,10 @@ function errorHandler(err, req, res, next) {
     error = ApiError.internal(env.nodeEnv === 'development' ? err.message : 'Something went wrong');
   }
 
-  if (env.nodeEnv === 'development' && !error.isOperational) {
+  // Unexpected (non-operational) errors are always logged server-side so
+  // they're visible in Render's logs — only the client-facing message is
+  // environment-gated (generic in production to avoid leaking internals).
+  if (!error.isOperational) {
     console.error(err);
   }
 
