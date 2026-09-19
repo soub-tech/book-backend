@@ -30,6 +30,14 @@ async function createPaymentIntent({ amountRupees, description, metadata = {} })
     };
   }
 
+  // Stripe rejects charges that convert to under ~$0.50 USD for settlement.
+  // ₹50 is a safe floor given typical INR/USD rates — catching this here
+  // gives a clear message instead of a raw Stripe crash reaching the user.
+  if (amountRupees < 50) {
+    const ApiError = require('../utils/ApiError');
+    throw ApiError.badRequest(`Amount too small to process (₹${amountRupees}). Minimum is ₹50.`);
+  }
+
   const stripe = getStripe();
   const intent = await stripe.paymentIntents.create({
     amount: Math.round(amountRupees * 100), // Stripe uses the smallest currency unit (paise for INR)

@@ -35,25 +35,32 @@ async function main() {
     where: { id: { in: ['seed-monthly-plan', 'seed-annual-plan'] } },
   });
 
+  // Prices match the frontend's displayed Plus plan (src/data/catalog.ts
+  // PLANS) — the original 9.99/89.99 placeholder values were low enough that
+  // Stripe rejects them as "amount too small" once converted for settlement.
   const existingMonthly = await prisma.membershipPlan.findFirst({ where: { name: 'Monthly Membership' } });
-  if (!existingMonthly) {
+  if (existingMonthly) {
+    await prisma.membershipPlan.update({ where: { id: existingMonthly.id }, data: { price: 299 } });
+  } else {
     await prisma.membershipPlan.create({
       data: {
         name: 'Monthly Membership',
         description: 'Unlimited access to all membership books',
-        price: 9.99,
+        price: 299,
         durationDays: 30,
       },
     });
   }
 
   const existingAnnual = await prisma.membershipPlan.findFirst({ where: { name: 'Annual Membership' } });
-  if (!existingAnnual) {
+  if (existingAnnual) {
+    await prisma.membershipPlan.update({ where: { id: existingAnnual.id }, data: { price: 2990 } });
+  } else {
     await prisma.membershipPlan.create({
       data: {
         name: 'Annual Membership',
         description: 'Unlimited access to all membership books, billed yearly',
-        price: 89.99,
+        price: 2990,
         durationDays: 365,
       },
     });
