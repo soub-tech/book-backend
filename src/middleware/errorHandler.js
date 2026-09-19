@@ -18,6 +18,11 @@ function mapPrismaError(err) {
 
 // eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, next) {
+  // Must capture this BEFORE wrapping err in ApiError below — every ApiError
+  // (including the generic wrapper) sets isOperational = true by design, so
+  // checking it after wrapping would always be true and never log anything.
+  const wasUnexpected = !(err instanceof ApiError);
+
   let error = err;
 
   if (err.code && err.code.startsWith('P')) {
@@ -28,10 +33,7 @@ function errorHandler(err, req, res, next) {
     error = ApiError.internal(env.nodeEnv === 'development' ? err.message : 'Something went wrong');
   }
 
-  // Unexpected (non-operational) errors are always logged server-side so
-  // they're visible in Render's logs — only the client-facing message is
-  // environment-gated (generic in production to avoid leaking internals).
-  if (!error.isOperational) {
+  if (wasUnexpected) {
     console.error(err);
   }
 
