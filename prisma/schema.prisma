@@ -57,6 +57,12 @@ model User {
   passwordResetExpires DateTime?
   isActive          Boolean  @default(true)
 
+  // Real reading-activity tracking (not estimated) — updated whenever the
+  // user actually opens/reads a book, see progressService.recordActivity.
+  currentStreak       Int       @default(0)
+  lastActiveDate      DateTime?
+  totalReadingMinutes Int       @default(0)
+
   // Relations
   purchases         Purchase[]
   memberships       Membership[]
