@@ -46,7 +46,8 @@ model User {
   id            String    @id @default(uuid())
   name          String
   email         String    @unique
-  passwordHash  String
+  passwordHash  String?   // null for accounts created via Google Sign-In
+  googleId      String?   @unique
   role          Role      @default(USER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

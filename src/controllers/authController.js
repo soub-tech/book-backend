@@ -31,6 +31,13 @@ const login = catchAsync(async (req, res) => {
   res.json({ success: true, data: { user, accessToken } });
 });
 
+const googleLogin = catchAsync(async (req, res) => {
+  const { idToken } = req.body;
+  const { user, accessToken, refreshToken } = await authService.loginWithGoogle(idToken);
+  setRefreshCookie(res, refreshToken);
+  res.json({ success: true, data: { user, accessToken } });
+});
+
 // Access tokens live client-side (Authorization header); refresh tokens are
 // stored in an httpOnly cookie so JS can't read them (XSS mitigation) while
 // still allowing "remember me" style persistence across sessions.
@@ -76,4 +83,4 @@ const resetPassword = catchAsync(async (req, res) => {
   res.json({ success: true, message: 'Password has been reset. Please log in again.' });
 });
 
-module.exports = { register, login, refresh, logout, logoutAll, forgotPassword, resetPassword };
+module.exports = { register, login, googleLogin, refresh, logout, logoutAll, forgotPassword, resetPassword };

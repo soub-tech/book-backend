@@ -47,4 +47,8 @@ module.exports = {
   stripe: {
     secretKey: process.env.STRIPE_SECRET_KEY || null,
   },
+
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || null,
+  },
 };

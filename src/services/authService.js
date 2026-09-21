@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
+const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../config/db');
 const ApiError = require('../utils/ApiError');
+const env = require('../config/env');
 const {
   signAccessToken,
   signRefreshToken,
@@ -8,7 +10,6 @@ const {
   generateResetToken,
   hashToken,
 } = require('../utils/tokens');
-const env = require('../config/env');
 const { sanitizeUser } = require('../utils/sanitize');
 
 const SALT_ROUNDS = 12;
@@ -28,9 +29,10 @@ async function register({ name, email, password }) {
 
 async function login({ email, password }) {
   const user = await prisma.user.findUnique({ where: { email } });
-  // Same error for "no such user" and "wrong password" — avoids leaking
-  // which emails are registered.
-  if (!user || !user.isActive) throw ApiError.unauthorized('Invalid email or password');
+  // Same error for "no such user", "wrong password", and "this account has
+  // no password (Google-only)" — avoids leaking which emails are registered
+  // or how a given account was created.
+  if (!user || !user.isActive || !user.passwordHash) throw ApiError.unauthorized('Invalid email or password');
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) throw ApiError.unauthorized('Invalid email or password');
@@ -127,9 +129,59 @@ async function resetPassword(token, newPassword) {
   await logoutAllDevices(user.id);
 }
 
+const googleClient = env.google.clientId ? new OAuth2Client(env.google.clientId) : null;
+
+// Verifies the ID token Google's Sign-In button hands the frontend, then
+// either logs into an existing account (matching by email or a previously
+// linked googleId) or creates a brand-new one. Never trusts anything the
+// frontend claims about the user's identity — only what Google's own
+// verification confirms.
+async function loginWithGoogle(idToken) {
+  if (!googleClient) throw ApiError.internal('Google Sign-In is not configured');
+
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({ idToken, audience: env.google.clientId });
+    payload = ticket.getPayload();
+  } catch {
+    throw ApiError.unauthorized('Invalid Google sign-in');
+  }
+
+  if (!payload?.email || !payload.email_verified) {
+    throw ApiError.unauthorized('Google account email is not verified');
+  }
+
+  let user = await prisma.user.findFirst({
+    where: { OR: [{ googleId: payload.sub }, { email: payload.email }] },
+  });
+
+  if (user) {
+    // Link the Google identity to an existing email/password account the
+    // first time they use Google Sign-In with it.
+    if (!user.googleId) {
+      user = await prisma.user.update({ where: { id: user.id }, data: { googleId: payload.sub } });
+    }
+  } else {
+    user = await prisma.user.create({
+      data: {
+        name: payload.name || payload.email.split('@')[0],
+        email: payload.email,
+        googleId: payload.sub,
+        passwordHash: null,
+      },
+    });
+  }
+
+  if (!user.isActive) throw ApiError.unauthorized('Account no longer active');
+
+  const tokens = await issueTokenPair(user);
+  return { user: sanitizeUser(user), ...tokens };
+}
+
 module.exports = {
   register,
   login,
+  loginWithGoogle,
   refreshAccessToken,
   logout,
   logoutAllDevices,

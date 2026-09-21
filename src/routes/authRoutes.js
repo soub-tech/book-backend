@@ -7,6 +7,7 @@ const { auth: schemas } = require('../utils/validators');
 
 router.post('/register', authLimiter, validate({ body: schemas.register }), authController.register);
 router.post('/login', authLimiter, validate({ body: schemas.login }), authController.login);
+router.post('/google', authLimiter, authController.googleLogin);
 router.post('/refresh', validate({ body: schemas.refresh }), authController.refresh);
 router.post('/logout', authController.logout);
 router.post('/logout-all', authenticate, authController.logoutAll);
