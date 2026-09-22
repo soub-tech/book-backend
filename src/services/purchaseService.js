@@ -2,6 +2,7 @@ const prisma = require('../config/db');
 const ApiError = require('../utils/ApiError');
 const bookService = require('./bookService');
 const paymentService = require('./paymentService');
+const emailService = require('./emailService');
 
 // Single-book purchase, used when a real payment has already been verified
 // (paymentIntentId) — kept for API compatibility with any single-item flow.
@@ -24,11 +25,18 @@ async function purchaseBook(userId, { bookId, paymentIntentId }) {
     throw ApiError.badRequest('Payment could not be verified');
   }
 
-  return prisma.purchase.upsert({
+  const purchase = await prisma.purchase.upsert({
     where: { userId_bookId: { userId, bookId } },
     update: { status: 'COMPLETED', amount: book.price, paymentRef: verification.paymentRef, purchasedAt: new Date() },
     create: { userId, bookId, amount: book.price, status: 'COMPLETED', paymentRef: verification.paymentRef },
   });
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+  if (user) {
+    emailService.sendPurchaseConfirmationEmail(user.email, { bookTitle: book.title, amount: book.price }).catch(() => {});
+  }
+
+  return purchase;
 }
 
 // Whole-cart checkout: ONE payment intent covers every item, verified once,
@@ -55,6 +63,11 @@ async function checkoutCart(userId, { paymentIntentId, bookIds }) {
       create: { userId, bookId, amount: book.price, status: 'COMPLETED', paymentRef: verification.paymentRef },
     });
     purchases.push(purchase);
+
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (user) {
+      emailService.sendPurchaseConfirmationEmail(user.email, { bookTitle: book.title, amount: book.price }).catch(() => {});
+    }
   }
 
   return purchases;

@@ -13,6 +13,9 @@ module.exports = {
   nodeEnv: process.env.NODE_ENV || 'development',
   // Comma-separated list supported, e.g. "https://my-app.lovable.app,https://mydomain.com"
   clientUrl: (process.env.CLIENT_URL || 'http://localhost:3000').split(',').map((s) => s.trim()),
+  // The one canonical frontend URL used to build links in emails (password
+  // reset, etc.) — defaults to the first entry in CLIENT_URL if not set.
+  appUrl: process.env.APP_URL || (process.env.CLIENT_URL || 'http://localhost:3000').split(',')[0].trim(),
   // Set true when the frontend is on a different domain than this API
   // (e.g. a Lovable-hosted app calling a Render/Railway-hosted backend).
   cookieCrossOrigin: process.env.COOKIE_CROSS_ORIGIN === 'true',
@@ -50,5 +53,10 @@ module.exports = {
 
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID || null,
+  },
+
+  resend: {
+    apiKey: process.env.RESEND_API_KEY || null,
+    fromAddress: process.env.EMAIL_FROM || 'onboarding@resend.dev',
   },
 };

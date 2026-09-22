@@ -1,5 +1,6 @@
 const catchAsync = require('../utils/catchAsync');
 const authService = require('../services/authService');
+const emailService = require('../services/emailService');
 const env = require('../config/env');
 
 const REFRESH_COOKIE_NAME = 'refreshToken';
@@ -63,17 +64,19 @@ const logoutAll = catchAsync(async (req, res) => {
 const forgotPassword = catchAsync(async (req, res) => {
   const { rawToken, user } = await authService.forgotPassword(req.body.email);
 
-  // TODO: wire up real email delivery (see src/services/emailService.js).
-  // Never return the raw token in the response in production — it's logged
-  // here only so the flow is testable without SMTP configured.
-  if (rawToken && env.nodeEnv !== 'production') {
-    console.log(`Password reset token for ${user.email}: ${rawToken}`);
+  if (rawToken && user) {
+    const resetLink = `${env.appUrl}/reset-password?token=${rawToken}`;
+    await emailService.sendPasswordResetEmail(user.email, resetLink);
+    // Still logged in non-production so the flow is testable without
+    // waiting on real email delivery during development.
+    if (env.nodeEnv !== 'production') {
+      console.log(`Password reset link for ${user.email}: ${resetLink}`);
+    }
   }
 
   res.json({
     success: true,
     message: 'If an account with that email exists, a reset link has been sent',
-    ...(env.nodeEnv !== 'production' && rawToken ? { devToken: rawToken } : {}),
   });
 });
 

@@ -1,6 +1,7 @@
 const prisma = require('../config/db');
 const ApiError = require('../utils/ApiError');
 const paymentService = require('./paymentService');
+const emailService = require('./emailService');
 
 // Central source of truth for "is this user's membership active right now".
 // Never trust a stored ACTIVE status alone — always check the expiry date,
@@ -42,7 +43,7 @@ async function subscribe(userId, { planId, paymentIntentId }) {
     });
   }
 
-  return prisma.membership.create({
+  const membership = await prisma.membership.create({
     data: {
       userId,
       planId,
@@ -52,6 +53,13 @@ async function subscribe(userId, { planId, paymentIntentId }) {
     },
     include: { plan: true },
   });
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+  if (user) {
+    emailService.sendMembershipConfirmationEmail(user.email, { planName: plan.name, expiryDate }).catch(() => {});
+  }
+
+  return membership;
 }
 
 async function cancel(userId, membershipId) {
