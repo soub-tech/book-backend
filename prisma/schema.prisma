@@ -68,6 +68,7 @@ model User {
   purchases         Purchase[]
   memberships       Membership[]
   readingProgress   ReadingProgress[]
+  reviews           Review[]
 
   @@index([email])
 }
@@ -106,8 +107,15 @@ model Book {
   isNew           Boolean        @default(false)
   bestsellerRank  Int?
 
+  // Real ratings — denormalized here for fast reads (list/card views),
+  // recalculated from the Review table by reviewService.recalculateBookRating
+  // every time a review is created, edited, or deleted. Never set by hand.
+  averageRating   Float          @default(0)
+  reviewCount     Int            @default(0)
+
   purchases       Purchase[]
   readingProgress ReadingProgress[]
+  reviews         Review[]
 
   @@index([accessType])
   @@index([category])
@@ -176,4 +184,25 @@ model ReadingProgress {
   @@unique([userId, bookId])
   @@index([userId])
   @@index([bookId])
+}
+
+// Real reviews only — a review can only be created for a book the user
+// actually has access to (see reviewService.assertCanReview, which reuses
+// bookService.assertAccess — the same check readBook/progress writes use).
+// One review per user per book; editing/deleting recalculates the book's
+// averageRating and reviewCount rather than leaving them stale.
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId    String
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  rating    Int      // 1–5, enforced in reviewService
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, bookId])
+  @@index([bookId])
+  @@index([userId])
 }
