@@ -1,9 +1,6 @@
 const router = require('express').Router({ mergeParams: true });
-// NOTE: adjust these two requires to match your actual auth middleware file
-// and exported function names (e.g. it might be `protect` / `isAdmin`
-// instead of `authenticate` / `requireAdmin`) — send me your middleware/auth.js
-// and I'll line these up exactly.
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
+const { authorize } = require('../middleware/auth');
 const reviewController = require('../controllers/reviewController');
 
 // Public — anyone can read reviews for a book, logged in or not.
@@ -17,7 +14,7 @@ router.patch('/reviews/:id', authenticate, reviewController.updateReview);
 router.delete('/reviews/:id', authenticate, reviewController.deleteReview);
 
 // Admin moderation — remove fake/spam reviews, list everything.
-router.get('/admin/reviews', authenticate, requireAdmin, reviewController.getAllReviews);
-router.delete('/admin/reviews/:id', authenticate, requireAdmin, reviewController.adminDeleteReview);
+router.get('/admin/reviews', authenticate, authorize('ADMIN'), reviewController.getAllReviews);
+router.delete('/admin/reviews/:id', authenticate, authorize('ADMIN'), reviewController.adminDeleteReview);
 
 module.exports = router;
