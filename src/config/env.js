@@ -60,3 +60,4 @@ module.exports = {
     fromAddress: process.env.EMAIL_FROM || 'onboarding@resend.dev',
   },
 };
+

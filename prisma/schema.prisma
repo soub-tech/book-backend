@@ -101,12 +101,19 @@ model Book {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
+  // Bestseller / new tracking — recomputed by jobs/updateBestsellers.js
+  isBestseller    Boolean        @default(false)
+  isNew           Boolean        @default(false)
+  bestsellerRank  Int?
+
   purchases       Purchase[]
   readingProgress ReadingProgress[]
 
   @@index([accessType])
   @@index([category])
   @@index([status])
+  @@index([isBestseller])
+  @@index([isNew])
 }
 
 model MembershipPlan {
