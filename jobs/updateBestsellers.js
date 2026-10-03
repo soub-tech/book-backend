@@ -3,9 +3,9 @@
 // Recomputes which books are "bestsellers" based on real completed
 // purchases (and optionally reading activity for free/membership books)
 // over a rolling window. Matches your actual schema.prisma field names
-// and reuses your shared prisma client from config/db.
+// and reuses your shared prisma client from src/config/db.
 
-const prisma = require('../config/db');
+const prisma = require('../src/config/db'); // jobs/ is at repo root, config/ is inside src/
 
 const WINDOW_DAYS = 30;      // sales window to consider
 const BESTSELLER_COUNT = 10; // how many books get the badge

@@ -2,7 +2,7 @@ const app = require('./app');
 const env = require('./config/env');
 const prisma = require('./config/db');
 const membershipService = require('./services/membershipService');
-const bestsellerJob = require('./jobs/updateBestsellers');
+const bestsellerJob = require('../jobs/updateBestsellers'); // jobs/ is at repo root, one level above src/
 
 const server = app.listen(env.port, () => {
   console.log(`API listening on port ${env.port} [${env.nodeEnv}]`);
