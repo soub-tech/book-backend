@@ -106,4 +106,40 @@ const user = {
   idParam: z.object({ id: z.string().uuid() }),
 };
 
-module.exports = { auth, book, purchase, membershipPlan, membership, progress, user };
+// slug is optional on create — if omitted, the service auto-generates one
+// from name/title. Pass it explicitly only if you want a specific URL.
+const author = {
+  create: z.object({
+    name: z.string().min(1).max(200),
+    slug: z.string().min(1).max(200).optional(),
+    role: z.string().max(150).optional(),
+    bio: z.string().max(3000).optional(),
+  }),
+  update: z.object({
+    name: z.string().min(1).max(200).optional(),
+    slug: z.string().min(1).max(200).optional(),
+    role: z.string().max(150).optional(),
+    bio: z.string().max(3000).optional(),
+  }),
+  idParam: z.object({ id: z.string().uuid() }),
+  slugParam: z.object({ slug: z.string().min(1) }),
+};
+
+const collection = {
+  create: z.object({
+    title: z.string().min(1).max(200),
+    slug: z.string().min(1).max(200).optional(),
+    description: z.string().max(2000).optional(),
+  }),
+  update: z.object({
+    title: z.string().min(1).max(200).optional(),
+    slug: z.string().min(1).max(200).optional(),
+    description: z.string().max(2000).optional(),
+  }),
+  addBook: z.object({ bookId: z.string().uuid() }),
+  idParam: z.object({ id: z.string().uuid() }),
+  bookIdParam: z.object({ id: z.string().uuid(), bookId: z.string().uuid() }),
+  slugParam: z.object({ slug: z.string().min(1) }),
+};
+
+module.exports = { auth, book, purchase, membershipPlan, membership, progress, user, author, collection };

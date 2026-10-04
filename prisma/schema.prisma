@@ -117,6 +117,12 @@ model Book {
   readingProgress ReadingProgress[]
   reviews         Review[]
 
+  // Many-to-many with Collection. Deliberately NOT linked to Author by a
+  // foreign key — Author is matched to this book by exact text match on
+  // `author` (see authorService.getBooksForAuthor) so the existing book
+  // create/update flow never has to change.
+  collections     Collection[]   @relation("CollectionBooks")
+
   @@index([accessType])
   @@index([category])
   @@index([status])
@@ -205,4 +211,32 @@ model Review {
   @@unique([userId, bookId])
   @@index([bookId])
   @@index([userId])
+}
+
+// Author pages show a bio/role plus every book whose `Book.author` text
+// matches this author's `name` exactly (see authorService.getBooksForAuthor)
+// — deliberately not a foreign key on Book, so the existing book create/
+// update flow is untouched. If you rename an author here, existing books
+// keep their old author text until re-saved to match the new name.
+model Author {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String   @unique
+  role      String?
+  bio       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// A curated shelf of books, admin-assigned. Real many-to-many with Book via
+// the implicit "CollectionBooks" relation (Prisma creates the join table).
+model Collection {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  books Book[] @relation("CollectionBooks")
 }
