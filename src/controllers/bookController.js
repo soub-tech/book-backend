@@ -4,7 +4,9 @@ const bookService = require('../services/bookService');
 const ApiError = require('../utils/ApiError');
 
 const listBooks = catchAsync(async (req, res) => {
-  const result = await bookService.listBooks(req.query);
+  // Admins see DRAFT/ARCHIVED books too (needed for the admin panel) —
+  // everyone else only ever sees PUBLISHED ones.
+  const result = await bookService.listBooks(req.query, { includeUnpublished: req.user?.role === 'ADMIN' });
 
   // Attach a lightweight hasAccess flag per book for logged-in users so the
   // frontend can show "Read" vs "Buy" vs "Subscribe" without extra calls.
