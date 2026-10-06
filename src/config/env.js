@@ -20,6 +20,11 @@ module.exports = {
   // (e.g. a Lovable-hosted app calling a Render/Railway-hosted backend).
   cookieCrossOrigin: process.env.COOKIE_CROSS_ORIGIN === 'true',
 
+  // Inbox the public contact form (contactController.js) sends to. Null
+  // until you set SUPPORT_EMAIL — the form returns a clear error until then
+  // instead of silently doing nothing.
+  supportEmail: process.env.SUPPORT_EMAIL || null,
+
   jwt: {
     accessSecret: required('JWT_ACCESS_SECRET'),
     refreshSecret: required('JWT_REFRESH_SECRET'),
@@ -60,4 +65,3 @@ module.exports = {
     fromAddress: process.env.EMAIL_FROM || 'onboarding@resend.dev',
   },
 };
-

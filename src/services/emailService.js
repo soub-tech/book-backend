@@ -16,7 +16,7 @@ function getResend() {
 
 const EMAIL_ENABLED = Boolean(env.resend.apiKey);
 
-async function sendEmail({ to, subject, html }) {
+async function sendEmail({ to, subject, html, replyTo }) {
   if (!EMAIL_ENABLED) {
     // No API key configured — log instead of failing, so the rest of the
     // app (signup, purchases) keeps working in environments without email
@@ -27,7 +27,13 @@ async function sendEmail({ to, subject, html }) {
 
   try {
     const resend = getResend();
-    await resend.emails.send({ from: env.resend.fromAddress, to, subject, html });
+    await resend.emails.send({
+      from: env.resend.fromAddress,
+      to,
+      subject,
+      html,
+      ...(replyTo ? { reply_to: replyTo } : {}),
+    });
     return { sent: true };
   } catch (err) {
     // Email failures should never break the underlying action (a purchase
@@ -84,10 +90,27 @@ async function sendMembershipConfirmationEmail(to, { planName, expiryDate }) {
   });
 }
 
+// Sent to the site's SUPPORT_EMAIL inbox whenever someone submits the public
+// contact form (see contactController.js). replyTo is set to the visitor's
+// own email so support can just hit "Reply" in their inbox.
+async function sendContactMessage(to, { name, email, subjectLabel, message }) {
+  return sendEmail({
+    to,
+    subject: `[Contact] ${subjectLabel} — from ${name}`,
+    html: wrapper(`
+      <p><strong>From:</strong> ${name} (<a href="mailto:${email}">${email}</a>)</p>
+      <p><strong>Topic:</strong> ${subjectLabel}</p>
+      <p style="white-space: pre-wrap;">${message}</p>
+    `),
+    replyTo: email,
+  });
+}
+
 module.exports = {
   sendEmail,
   sendPasswordResetEmail,
   sendPurchaseConfirmationEmail,
   sendMembershipConfirmationEmail,
+  sendContactMessage,
   EMAIL_ENABLED,
 };

@@ -142,4 +142,16 @@ const collection = {
   slugParam: z.object({ slug: z.string().min(1) }),
 };
 
-module.exports = { auth, book, purchase, membershipPlan, membership, progress, user, author, collection };
+// Public contact form — no auth required, so this is the only guard against
+// bad input. subject defaults to "other" if the dropdown somehow doesn't
+// send a value.
+const contact = {
+  send: z.object({
+    name: z.string().min(1).max(150),
+    email: z.string().email(),
+    subject: z.enum(['order', 'membership', 'reading', 'rights', 'other']).default('other'),
+    message: z.string().min(1).max(5000),
+  }),
+};
+
+module.exports = { auth, book, purchase, membershipPlan, membership, progress, user, author, collection, contact };
