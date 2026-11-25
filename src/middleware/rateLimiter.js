@@ -7,6 +7,9 @@ const apiLimiter = rateLimit({
   max: env.rateLimit.max,
   standardHeaders: true,
   legacyHeaders: false,
+  // Session refresh runs on every page load, so it must not eat into the
+  // general quota.
+  skip: (req) => req.originalUrl.split('?')[0].endsWith('/auth/refresh'),
   message: { success: false, message: 'Too many requests, please try again later' },
 });
 
