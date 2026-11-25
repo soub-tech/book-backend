@@ -2,11 +2,10 @@ const path = require('path');
 const catchAsync = require('../utils/catchAsync');
 const bookService = require('../services/bookService');
 const ApiError = require('../utils/ApiError');
+const storageService = require('../services/storageService');
 
 const listBooks = catchAsync(async (req, res) => {
-  // Admins see DRAFT/ARCHIVED books too (needed for the admin panel) —
-  // everyone else only ever sees PUBLISHED ones.
-  const result = await bookService.listBooks(req.query, { includeUnpublished: req.user?.role === 'ADMIN' });
+  const result = await bookService.listBooks(req.query);
 
   // Attach a lightweight hasAccess flag per book for logged-in users so the
   // frontend can show "Read" vs "Buy" vs "Subscribe" without extra calls.
@@ -44,7 +43,18 @@ const readBook = catchAsync(async (req, res) => {
 
   await require('../services/progressService').touchOpened(req.user.id, book.id);
 
-  // fileUrl stores a relative path under the upload dir; resolve and stream it.
+  // New uploads live in private cloud storage ("s3:<key>"); stream them
+  // through here so the access check above can never be bypassed.
+  if (book.fileUrl.startsWith('s3:')) {
+    const { stream, contentType, contentLength } = await storageService.getBookFileStream(book.fileUrl);
+    res.setHeader('Content-Type', contentType || 'application/pdf');
+    if (contentLength) res.setHeader('Content-Length', contentLength);
+    res.setHeader('Cache-Control', 'private, no-store');
+    stream.on('error', () => res.destroy());
+    return stream.pipe(res);
+  }
+
+  // Older books uploaded before cloud storage still use a local path.
   res.sendFile(path.resolve(book.fileUrl));
 });
 
@@ -65,13 +75,15 @@ const deleteBook = catchAsync(async (req, res) => {
 
 const uploadCoverImage = catchAsync(async (req, res) => {
   if (!req.file) throw ApiError.badRequest('No file uploaded');
-  const book = await bookService.setCoverImage(req.params.id, req.file.path);
+  const coverUrl = await storageService.uploadCover(req.file);
+  const book = await bookService.setCoverImage(req.params.id, coverUrl);
   res.json({ success: true, data: book });
 });
 
 const uploadBookFile = catchAsync(async (req, res) => {
   if (!req.file) throw ApiError.badRequest('No file uploaded');
-  const book = await bookService.setBookFile(req.params.id, req.file.path);
+  const fileRef = await storageService.uploadBookFile(req.file);
+  const book = await bookService.setBookFile(req.params.id, fileRef);
   res.json({ success: true, data: book });
 });
 
