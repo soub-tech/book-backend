@@ -12,13 +12,21 @@ const ApiError = require('../utils/ApiError');
 const COVERS_BUCKET = process.env.SUPABASE_COVERS_BUCKET || 'covers';
 const BOOKS_BUCKET = process.env.SUPABASE_BOOKS_BUCKET || 'books';
 
+// Tolerates quotes, spaces, a missing https://, trailing slashes or extra
+// path pieces pasted into the env var — any of those make Supabase answer
+// "Invalid path specified in request URL".
+function cleanEnv(value) {
+  return (value || '').trim().replace(/^["']|["']$/g, '').trim();
+}
+
 let client;
 function getClient() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
+  const rawUrl = cleanEnv(process.env.SUPABASE_URL);
+  const key = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  if (!rawUrl || !key) {
     throw new Error('File storage is not configured: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
   }
+  const url = new URL(/^https?:\/\//.test(rawUrl) ? rawUrl : `https://${rawUrl}`).origin;
   if (!client) client = createClient(url, key, { auth: { persistSession: false } });
   return client;
 }
